@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Abril y el Pantanoso</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#141a4a; --paper:#f2f5ff; --caption:#b9e1ff; --brick:#6a3fc9; --blue:#1f6fd1; --water:#d6e4ff; --lav:#d9ccff;
+  --display:'Bangers','Impact',sans-serif; --hand:'Patrick Hand','Comic Sans MS',sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:var(--hand);color:var(--ink);background:var(--ink);font-size:18px}
+#map{position:absolute;inset:0;z-index:1}
+
+/* Título */
+.titulo{position:absolute;z-index:500;top:16px;left:16px;max-width:min(420px,calc(100% - 32px));
+  background:var(--paper);border:4px solid var(--ink);padding:14px 18px 12px;box-shadow:6px 6px 0 var(--ink)}
+.titulo small{display:block;color:var(--brick);font-size:15px}
+.titulo h1{margin:2px 0 4px;font-family:var(--display);font-weight:400;font-size:clamp(34px,6vw,54px);line-height:.95;letter-spacing:.02em;transform:skew(-6deg)}
+.titulo p{margin:0;font-size:16px}
+
+/* Botón */
+.btn{font-family:var(--hand);font-size:20px;color:var(--ink);background:var(--caption);border:3px solid var(--ink);
+  padding:10px 18px;cursor:pointer;box-shadow:4px 4px 0 var(--ink);transition:transform .12s,box-shadow .12s}
+.btn:hover,.btn:focus-visible{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--ink);outline:none}
+.btn:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+#abrir{position:absolute;z-index:500;right:16px;bottom:28px}
+
+/* Marcador pulsante */
+.pin{position:relative;width:26px;height:26px}
+.pin i{position:absolute;inset:0;border-radius:50%;background:var(--brick);border:3px solid var(--paper)}
+.pin b{position:absolute;inset:-4px;border-radius:50%;border:3px solid var(--caption);animation:pulso 2s ease-out infinite}
+@keyframes pulso{from{transform:scale(.8);opacity:1}to{transform:scale(2.6);opacity:0}}
+
+/* Panel */
+#panel{position:absolute;z-index:900;inset:0;display:none;align-items:center;justify-content:center;
+  padding:16px;background:rgba(20,26,74,.6)}
+#panel.abierto{display:flex}
+.hoja{position:relative;width:min(760px,100%);max-height:100%;overflow:auto;background:var(--paper);border:4px solid var(--ink);
+  box-shadow:8px 8px 0 var(--ink);padding:22px}
+.hoja h2{margin:0 0 4px;font-family:var(--display);font-weight:400;font-size:clamp(28px,5vw,40px);letter-spacing:.02em}
+.hoja>p{margin:0 0 16px}
+.opciones{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.op{display:block;text-decoration:none;color:var(--ink);border:3px solid var(--ink);background:#fff;transition:transform .12s}
+.op:hover,.op:focus-visible{transform:translateY(-4px);outline:none}
+.op:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.op .tag{display:block;background:var(--caption);border-bottom:3px solid var(--ink);padding:6px 12px;font-size:17px}
+.op .cuerpo{display:block;padding:12px}
+.op strong{display:block;font-family:var(--display);font-weight:400;font-size:28px;letter-spacing:.02em;margin-bottom:4px}
+.op.radio .tag{background:var(--lav)}
+.op svg{display:block;width:100%;height:70px;margin-bottom:8px}
+.cerrar{position:absolute;top:10px;right:10px;width:38px;height:38px;font-size:22px;padding:0;line-height:1}
+.nota{margin-top:14px;font-size:14px;opacity:.75}
+@media (max-width:620px){.opciones{grid-template-columns:1fr}#abrir{left:16px;right:auto;bottom:20px}}
+@media (prefers-reduced-motion:reduce){.pin b{animation:none}.btn,.op{transition:none}}
+.leaflet-container{font-family:var(--hand)}
+</style>
+</head>
+<body>
+
+<div id="map" aria-label="Mapa satelital del Arroyo Pantanoso, Montevideo"></div>
+
+<header class="titulo">
+  <small>Una historia del Arroyo Pantanoso</small>
+  <h1>Abril y el Pantanoso</h1>
+  <p>Montevideo, 2011 hasta 2100. Explorá el barrio y encontrá su casa.</p>
+</header>
+
+<button class="btn" id="abrir">Elegí cómo vivir la historia</button>
+
+<section id="panel" role="dialog" aria-modal="true" aria-labelledby="ptitulo">
+  <div class="hoja">
+    <button class="btn cerrar" id="cerrar" aria-label="Cerrar">✕</button>
+    <h2 id="ptitulo">Acá vive Abril</h2>
+    <p>Tiene 15 años y cruza este puente para ir al liceo. ¿Cómo querés conocer su historia?</p>
+    <div class="opciones">
+      <a class="op radio" id="lnk-radio" href="radionovela.html">
+        <span class="tag">Para escuchar</span>
+        <span class="cuerpo">
+          <svg viewBox="0 0 200 70" aria-hidden="true"><g fill="none" stroke="#141a4a" stroke-width="3"><rect x="40" y="18" width="120" height="44" rx="4" fill="#f2f5ff"/><circle cx="75" cy="40" r="14"/><path d="M110 32h36M110 42h36M110 52h24"/><path d="M60 18l60-14"/></g></svg>
+          <strong>Radionovela</strong>
+          Ponete los auriculares y escuchá cómo Abril descubre dónde vive.
+        </span>
+      </a>
+      <a class="op" id="lnk-historia" href="historia.html">
+        <span class="tag">Para decidir</span>
+        <span class="cuerpo">
+          <svg viewBox="0 0 200 70" aria-hidden="true"><g fill="none" stroke="#141a4a" stroke-width="3"><path d="M20 66V34l22-16 22 16v32z" fill="#f2f5ff"/><path d="M0 60q25-8 50 0t50 0 50 0 50 0" stroke="#1a6ea6"/><path d="M110 50q20-30 40-10t30-22" stroke-dasharray="6 5"/></g></svg>
+          <strong>Historia interactiva</strong>
+          Recorré el barrio y elegí qué pasa con la casa de Abril.
+        </span>
+      </a>
+    </div>
+    <p class="nota">Abril es un personaje inventado con datos reales (INE, DINACC, LiDAR).</p>
+  </div>
+</section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// ====== AJUSTÁ ESTO ======
+const CENTRO   = [-34.8676, -56.2462];  // vista inicial
+const CASA     = [-34.86755, -56.24704]; // casa de Abril (Shift+clic en el mapa muestra coordenadas en la consola)
+const ZOOM     = 17;
+const LINK_RADIO    = 'radionovela.html';
+const LINK_HISTORIA = 'historia.html';
+// ==========================
+
+document.getElementById('lnk-radio').href = LINK_RADIO;
+document.getElementById('lnk-historia').href = LINK_HISTORIA;
+
+const map = L.map('map',{zoomControl:true,minZoom:12,maxZoom:19}).setView([CENTRO[0]+0.02, CENTRO[1]-0.03], 13);
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
+  maxZoom:19, attribution:'Imágenes © Esri, Maxar, Earthstar Geographics'
+}).addTo(map);
+
+// Entrada con zoom hacia la zona
+setTimeout(()=>map.flyTo(CENTRO, ZOOM, {duration:3}), 600);
+
+map.on('click',e=>{if(e.originalEvent.shiftKey)console.log('['+e.latlng.lat.toFixed(5)+', '+e.latlng.lng.toFixed(5)+']')});
+const pin = L.marker(CASA,{
+  icon:L.divIcon({className:'',html:'<div class="pin"><b></b><i></i></div>',iconSize:[26,26],iconAnchor:[13,13]}),
+  title:'La casa de Abril', keyboard:true
+}).addTo(map);
+
+const panel = document.getElementById('panel');
+const abrir = ()=>{panel.classList.add('abierto');document.getElementById('cerrar').focus()};
+const cerrar = ()=>panel.classList.remove('abierto');
+pin.on('click',abrir);
+document.getElementById('abrir').addEventListener('click',abrir);
+document.getElementById('cerrar').addEventListener('click',cerrar);
+panel.addEventListener('click',e=>{if(e.target===panel)cerrar()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')cerrar()});
+</script>
+</body>
+</html>
