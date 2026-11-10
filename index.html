@@ -262,7 +262,11 @@
         document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
         function scrollToEl(id) { document.getElementById(id).scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 
-        function closeStory() { stopSceneAudio(); document.getElementById('story-panel').classList.add('hidden'); }
+        function closeStory() {
+            stopSceneAudio();
+            stopClaimAudio();
+            document.getElementById('story-panel').classList.add('hidden');
+        }
 
         function openModal() {
             document.getElementById('start-modal').classList.remove('hidden');
@@ -312,61 +316,130 @@
         // Para agregar un sonido, completá el "src" de la escena con el nombre
         // del archivo (en la misma carpeta que este HTML). Ejemplo:
         //     Lluvia: { src: 'lluvia.mp3', loop: true, volume: 0.6 },
-        // - src:    archivo de audio ('' = esa escena no reproduce nada)
+        // - src:    archivo de audio ('' = continuar el audio actual)
         // - loop:   true para que se repita mientras dure la escena
         // - volume: de 0 (silencio) a 1 (máximo)
-        // El audio anterior se corta solo al pasar a la siguiente escena.
+        // El audio anterior se reemplaza solo si la siguiente escena configura otro archivo.
         // =====================================================================
         const SCENE_AUDIO = {
-            Inicio    : { src: '', loop: false, volume: 1 },
-            Almacen   : { src: '', loop: false, volume: 1 },
-            Abuelo    : { src: '', loop: false, volume: 1 },
-            Censo     : { src: '', loop: false, volume: 1 },
-            Lluvia    : { src: '', loop: false, volume: 1 },
+            Inicio    : { src: 'inicio.ogg', loop: true, volume: 1 },
+            Almacen   : { src: 'almacen.mp3', loop: false, volume: 1 },
+            Abuelo    : { src: 'abuelo.mp3', loop: false, volume: 1 },
+            Censo     : { src: 'censo.mp3', loop: false, volume: 1 },
+            Lluvia    : { src: 'lluvia.wav', loop: false, volume: 1 },
             Clase     : { src: '', loop: false, volume: 1 },
             Tina      : { src: '', loop: false, volume: 1 },
-            Deber     : { src: '', loop: false, volume: 1 },
+            Deber     : { src: 'ventanalluvia.wav', loop: false, volume: 1 },
             Datos     : { src: '', loop: false, volume: 1 },
-            Vecinos   : { src: '', loop: false, volume: 1 },
+            Vecinos   : { src: 'vecinos.mp3', loop: false, volume: 1 },
             Futuro    : { src: '', loop: false, volume: 1 },
             Decision  : { src: '', loop: false, volume: 1 },
-            NoActuo   : { src: '', loop: false, volume: 1 },
+            NoActuo   : { src: 'botonmal.mp3', loop: false, volume: 1 },
             Investigar: { src: '', loop: false, volume: 1 },
             Familia   : { src: '', loop: false, volume: 1 },
             Vecinos2  : { src: '', loop: false, volume: 1 },
             Reclamo   : { src: '', loop: false, volume: 1 },
-            Final1    : { src: '', loop: false, volume: 1 },
-            Final2    : { src: '', loop: false, volume: 1 },
+            Final1    : { src: 'clapfinal.mp3', loop: false, volume: 1 },
+            Final2    : { src: 'final2.wav', loop: false, volume: 1 },
         };
 
         let sceneAudio = null;
+        let final1Audio = null;
+        let currentPassageId = null;
+        let rainPreTimeout = null;
+        const navigationAudio = new Audio('boton.mp3');
+        const rayitasAudio = new Audio('rayitas.mp3');
+        const flashlightAudio = new Audio('linterna.mp3');
+        const rainPreAudio = new Audio('lluviapre.mp3');
+        const waterLevelAudio = {
+            lower: new Audio('bajaragua.mp3'),
+            raise: new Audio('subiragua.mp3')
+        };
+        const proofAudio = new Audio('4pruebas.mp3');
+        const claimAudio = new Audio('lapizreclamo.mp3');
         let sceneMuted = false;
+
+        function stopRainPreAudio() {
+            if (rainPreTimeout !== null) {
+                clearTimeout(rainPreTimeout);
+                rainPreTimeout = null;
+            }
+            rainPreAudio.pause();
+            rainPreAudio.currentTime = 0;
+        }
 
         function stopSceneAudio() {
             if (sceneAudio) { sceneAudio.pause(); sceneAudio = null; }
+            if (final1Audio) {
+                final1Audio.pause();
+                final1Audio.currentTime = 0;
+                final1Audio = null;
+            }
+            stopRainPreAudio();
+        }
+
+        function stopClaimAudio() {
+            claimAudio.pause();
+            claimAudio.currentTime = 0;
         }
 
         function playSceneAudio(passageId) {
-            stopSceneAudio();
             const cfg = SCENE_AUDIO[passageId];
             if (!cfg || !cfg.src) return;
-            sceneAudio = new Audio(cfg.src);
+            stopSceneAudio();
+            sceneAudio = new Audio();
+            sceneAudio.preload = 'auto';
+            sceneAudio.src = cfg.src;
             sceneAudio.loop = !!cfg.loop;
             sceneAudio.volume = cfg.volume ?? 1;
             sceneAudio.muted = sceneMuted;
-            sceneAudio.play().catch(() => { /* si el archivo no existe o el navegador lo bloquea, la historia sigue igual */ });
+            const audio = sceneAudio;
+            if (passageId === 'Final1') {
+                let endingAudioStarted = false;
+                const playEndingAudio = () => {
+                    if (endingAudioStarted || currentPassageId !== passageId || sceneAudio !== audio) return;
+                    endingAudioStarted = true;
+                    final1Audio = new Audio('final1.mp3');
+                    final1Audio.muted = sceneMuted;
+                    final1Audio.play().catch(error => console.error('No se pudo reproducir final1.mp3:', error));
+                };
+                audio.addEventListener('timeupdate', () => {
+                    if (Number.isFinite(audio.duration) && audio.currentTime >= Math.max(0, audio.duration - 1)) {
+                        playEndingAudio();
+                    }
+                });
+                audio.addEventListener('ended', playEndingAudio);
+            }
+            audio.play().then(() => {
+                if (passageId !== 'Lluvia' || currentPassageId !== passageId || sceneAudio !== audio) return;
+                rainPreTimeout = setTimeout(() => {
+                    rainPreTimeout = null;
+                    if (currentPassageId !== passageId || sceneAudio !== audio) return;
+                    rainPreAudio.currentTime = 0;
+                    rainPreAudio.play().catch(error => console.error('No se pudo reproducir lluviapre.mp3:', error));
+                }, 1000);
+            }).catch(error => console.error(`No se pudo reproducir ${cfg.src}:`, error));
         }
 
         function toggleSceneMute() {
             sceneMuted = !sceneMuted;
             if (sceneAudio) sceneAudio.muted = sceneMuted;
+            if (final1Audio) final1Audio.muted = sceneMuted;
             document.getElementById('mute-btn').textContent = sceneMuted ? '🔇' : '🔊';
         }
 
         function goToPassage(passageId) {
             const titleEl = document.getElementById('story-chapter-title');
             const contentEl = document.getElementById('passage-content');
+            const sceneAudioConfig = SCENE_AUDIO[passageId];
 
+            if (currentPassageId === 'Reclamo') stopClaimAudio();
+            if (!sceneAudioConfig || !sceneAudioConfig.src) {
+                navigationAudio.currentTime = 0;
+                navigationAudio.play().catch(error => console.error('No se pudo reproducir boton.mp3:', error));
+            }
+            stopRainPreAudio();
+            currentPassageId = passageId;
             contentEl.classList.remove('passage-fade');
             void contentEl.offsetWidth;
             contentEl.classList.add('passage-fade');
@@ -428,6 +501,8 @@
             ];
 
             window.clickRayita = function(idx) {
+                rayitasAudio.currentTime = 0;
+                rayitasAudio.play().catch(error => console.error('No se pudo reproducir rayitas.mp3:', error));
                 if (!gameState.v[idx]) {
                     gameState.v[idx] = true;
                     gameState.r += 1;
@@ -576,6 +651,9 @@
             ];
 
             window.setSeaLevel = function(delta) {
+                const audio = delta < 0 ? waterLevelAudio.lower : waterLevelAudio.raise;
+                audio.currentTime = 0;
+                audio.play().catch(error => console.error('No se pudo reproducir el sonido del nivel del agua:', error));
                 gameState.mar = Math.max(1, Math.min(4, gameState.mar + delta));
                 renderTina();
             };
@@ -618,6 +696,8 @@
         function renderDeber() {
             window.toggleLight = function() {
                 gameState.flashlight = !gameState.flashlight;
+                flashlightAudio.currentTime = 0;
+                flashlightAudio.play().catch(error => console.error('No se pudo reproducir linterna.mp3:', error));
                 renderDeber();
             };
 
@@ -806,6 +886,8 @@
 
         function renderInvestigar() {
             window.toggleProof = function(key) {
+                proofAudio.currentTime = 0;
+                proofAudio.play().catch(error => console.error('No se pudo reproducir 4pruebas.mp3:', error));
                 if (!gameState.pruebas[key]) {
                     gameState.pruebas[key] = true;
                     gameState.k += 1;
@@ -877,6 +959,8 @@
 
         function renderVecinos2() {
             window.toggleConv = function(key) {
+                proofAudio.currentTime = 0;
+                proofAudio.play().catch(error => console.error('No se pudo reproducir 4pruebas.mp3:', error));
                 if (!gameState.convocatorias[key]) {
                     gameState.convocatorias[key] = true;
                     gameState.k += 1;
@@ -910,8 +994,12 @@
         }
 
         function renderReclamo() {
-            window.toggleReclamoKey = function(key) {
-                gameState.reclamos[key] = !gameState.reclamos[key];
+            window.toggleReclamoKey = function(key, checked) {
+                gameState.reclamos[key] = checked;
+                if (checked) {
+                    claimAudio.currentTime = 0;
+                    claimAudio.play().catch(error => console.error('No se pudo reproducir lapizreclamo.mp3:', error));
+                }
             };
 
             window.submitReclamoCarta = function() {
@@ -926,10 +1014,10 @@
                 <div class="space-y-4">
                     <div class="bg-white border-2 border-black p-4 rounded-xl space-y-2 text-xs font-bold">
                         <p class="text-slate-900 border-b pb-1">Marcá lo que van a pedir en la carta:</p>
-                        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" onchange="toggleReclamoKey('p1')"/> Alertas antes de crecidas</label>
-                        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" onchange="toggleReclamoKey('p2')"/> Limpieza del drenaje</label>
-                        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" onchange="toggleReclamoKey('p3')"/> Apoyo para mudanzas</label>
-                        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" onchange="toggleReclamoKey('p4')"/> Que la luz no se corte</label>
+                        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" onchange="toggleReclamoKey('p1', this.checked)"/> Alertas antes de crecidas</label>
+                        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" onchange="toggleReclamoKey('p2', this.checked)"/> Limpieza del drenaje</label>
+                        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" onchange="toggleReclamoKey('p3', this.checked)"/> Apoyo para mudanzas</label>
+                        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" onchange="toggleReclamoKey('p4', this.checked)"/> Que la luz no se corte</label>
                     </div>
                     <button onclick="submitReclamoCarta()" class="btn-comic bg-amber-400 hover:bg-amber-300 text-black px-6 py-3 rounded-xl text-base w-full">
                         Firmar y entregar la carta ✉️
