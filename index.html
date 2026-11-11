@@ -181,27 +181,20 @@
     </div>
 </div>
 
-    <!-- Radionovela Audio Overlay Modal (Simulated Player) -->
+    <!-- Radionovela Video Overlay Modal -->
     <div id="radio-player-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 hidden">
-        <div class="modal-container w-full max-w-md rounded-xl p-6 bg-purple-50 text-center space-y-4">
+        <div class="modal-container w-full max-w-3xl rounded-xl p-6 bg-purple-50 text-center space-y-4">
             <div class="flex justify-between items-center border-b-2 border-black pb-2">
                 <span class="font-bold text-purple-950">🎙️ RADIONOVELA: ABRIL Y EL PANTANOSO</span>
                 <button onclick="closeRadioPlayer()" class="font-bold text-black text-lg">✕</button>
             </div>
             
             <div class="w-full bg-white border-2 border-black p-4 rounded-xl space-y-3">
-                <div class="w-20 h-20 mx-auto bg-purple-200 border-2 border-black rounded-full flex items-center justify-center text-3xl">
-                    🎧
-                </div>
-                <h4 id="radio-status" class="font-black text-lg text-slate-900">Reproduciendo Episodio 1: Las Rayitas</h4>
-                <p class="text-xs text-slate-600 font-bold">Escuchando la voz narrada de Abril en el almacén del abuelo...</p>
-                
-                <!-- Audio Controls -->
-                <div class="flex justify-center items-center gap-4 pt-2">
-                    <button onclick="toggleAudioPlay()" id="audio-play-btn" class="btn-comic bg-purple-400 text-black px-6 py-2 rounded-lg text-sm">
-                        ⏸️ Pausar
-                    </button>
-                </div>
+                <h4 id="radio-status" class="font-black text-lg text-slate-900">Preparando radionovela...</h4>
+                <video id="radio-video" class="w-full rounded-lg border-2 border-black bg-black" controls playsinline preload="metadata">
+                    <source src="radionovela.mp4" type="video/mp4">
+                    Tu navegador no puede reproducir este video.
+                </video>
             </div>
 
             <button onclick="closeRadioPlayer(); startInteractiveStory();" class="btn-comic bg-sky-300 text-black px-4 py-2 rounded-lg text-xs w-full">
@@ -288,27 +281,47 @@
             stopSceneAudio();
             document.getElementById('start-modal').classList.add('hidden');
             document.getElementById('radio-player-modal').classList.remove('hidden');
+            document.getElementById('radio-status').innerText = 'Preparando radionovela...';
             gameState.isPlayingAudio = true;
+            const video = document.getElementById('radio-video');
+            video.currentTime = 0;
+            video.play().catch(error => {
+                gameState.isPlayingAudio = false;
+                if (error.name !== 'AbortError') {
+                    document.getElementById('radio-status').innerText = 'No se pudo reproducir el video. Usá los controles para volver a intentarlo.';
+                    console.error('No se pudo reproducir radionovela.mp4:', error);
+                }
+            });
         }
 
         function closeRadioPlayer() {
             document.getElementById('radio-player-modal').classList.add('hidden');
+            const video = document.getElementById('radio-video');
+            video.pause();
+            video.currentTime = 0;
             gameState.isPlayingAudio = false;
         }
 
-        function toggleAudioPlay() {
-            const btn = document.getElementById('audio-play-btn');
-            const status = document.getElementById('radio-status');
-            if (gameState.isPlayingAudio) {
-                gameState.isPlayingAudio = false;
-                btn.innerText = "▶️ Reproducir";
-                status.innerText = "En pausa";
-            } else {
-                gameState.isPlayingAudio = true;
-                btn.innerText = "⏸️ Pausar";
-                status.innerText = "Reproduciendo Episodio 1: Las Rayitas";
-            }
-        }
+        const radioVideo = document.getElementById('radio-video');
+        radioVideo.addEventListener('play', () => {
+            gameState.isPlayingAudio = true;
+        });
+        radioVideo.addEventListener('playing', () => {
+            document.getElementById('radio-status').innerText = 'Reproduciendo radionovela';
+        });
+        radioVideo.addEventListener('pause', () => {
+            gameState.isPlayingAudio = false;
+            document.getElementById('radio-status').innerText = 'En pausa';
+        });
+        radioVideo.addEventListener('ended', () => {
+            gameState.isPlayingAudio = false;
+            document.getElementById('radio-status').innerText = 'Radionovela finalizada';
+        });
+        radioVideo.addEventListener('error', () => {
+            gameState.isPlayingAudio = false;
+            document.getElementById('radio-status').innerText = 'No se pudo cargar el video de la radionovela.';
+            console.error('Error al cargar radionovela.mp4:', radioVideo.error);
+        });
 
         // Story Navigation
 // =====================================================================
@@ -324,19 +337,19 @@
         const SCENE_AUDIO = {
             Inicio    : { src: 'inicio.ogg', loop: true, volume: 1 },
             Almacen   : { src: 'almacen.mp3', loop: false, volume: 1 },
-            Abuelo    : { src: 'abuelo.mp3', loop: false, volume: 1 },
+            Abuelo    : { src: 'Queesesto.m4a', nextSrc: 'abuelo.mp3', loop: false, volume: 1 },
             Censo     : { src: 'censo.mp3', loop: false, volume: 1 },
             Lluvia    : { src: 'lluvia.wav', loop: false, volume: 1 },
-            Clase     : { src: '', loop: false, volume: 1 },
+            Clase     : { src: 'Bajoagua.m4a', nextSrc: 'profe.mp3', loop: false, volume: 1 },
             Tina      : { src: '', loop: false, volume: 1 },
             Deber     : { src: 'ventanalluvia.wav', loop: false, volume: 1 },
             Datos     : { src: '', loop: false, volume: 1 },
-            Vecinos   : { src: 'vecinos.mp3', loop: false, volume: 1 },
+            Vecinos   : { src: 'gonzalez.m4a', nextSrc: 'vecinos.mp3', loop: false, volume: 1 },
             Futuro    : { src: '', loop: false, volume: 1 },
             Decision  : { src: '', loop: false, volume: 1 },
             NoActuo   : { src: 'botonmal.mp3', loop: false, volume: 1 },
             Investigar: { src: '', loop: false, volume: 1 },
-            Familia   : { src: '', loop: false, volume: 1 },
+            Familia   : { src: 'madre.mp3', loop: false, volume: 1 },
             Vecinos2  : { src: '', loop: false, volume: 1 },
             Reclamo   : { src: '', loop: false, volume: 1 },
             Final1    : { src: 'clapfinal.mp3', loop: false, volume: 1 },
@@ -356,6 +369,7 @@
             raise: new Audio('subiragua.mp3')
         };
         const proofAudio = new Audio('4pruebas.mp3');
+        const investigateAudio = new Audio('investigar.mp3');
         const claimAudio = new Audio('lapizreclamo.mp3');
         let sceneMuted = false;
 
@@ -394,6 +408,15 @@
             sceneAudio.volume = cfg.volume ?? 1;
             sceneAudio.muted = sceneMuted;
             const audio = sceneAudio;
+            if (cfg.nextSrc) {
+                audio.addEventListener('ended', () => {
+                    if (currentPassageId !== passageId || sceneAudio !== audio) return;
+                    sceneAudio = new Audio(cfg.nextSrc);
+                    sceneAudio.preload = 'auto';
+                    sceneAudio.muted = sceneMuted;
+                    sceneAudio.play().catch(error => console.error(`No se pudo reproducir ${cfg.nextSrc}:`, error));
+                }, { once: true });
+            }
             if (passageId === 'Final1') {
                 let endingAudioStarted = false;
                 const playEndingAudio = () => {
@@ -886,8 +909,10 @@
 
         function renderInvestigar() {
             window.toggleProof = function(key) {
-                proofAudio.currentTime = 0;
-                proofAudio.play().catch(error => console.error('No se pudo reproducir 4pruebas.mp3:', error));
+                const isOpening = !gameState.proofOpen[key];
+                const audio = key === 'rayitas' && isOpening ? investigateAudio : proofAudio;
+                audio.currentTime = 0;
+                audio.play().catch(error => console.error(`No se pudo reproducir ${audio.src}:`, error));
                 if (!gameState.pruebas[key]) {
                     gameState.pruebas[key] = true;
                     gameState.k += 1;
@@ -911,7 +936,7 @@
                     </div>
                     <a href="https://www.canva.com/design/DAHaRiUOiKA/MyIxPM_u-Gfr104iUcTXyA/view" target="_blank" rel="noopener" class="underline text-sky-800 font-bold">Abrir en Canva (otra pestaña)</a>`,
                 vecinos: `
-                    <p>No aguantaron más y se fueron para cerca de la ruta, donde está el puente.</p>`
+                    <p>Te cuentan que no aguantaron más las inundaciones y se tuvieron que trasladar para otra zona cerca de la ruta, donde está el puente.</p>`
             };
             const items = [
                 ['rayitas', '📷 Fotos a las rayitas'],
@@ -948,7 +973,7 @@
                 <div class="space-y-4">
                     <div class="bg-amber-50 border-2 border-black p-4 rounded-xl text-xs md:text-sm space-y-2">
                         <p class="font-bold">—No es solo la lluvia. Es el mar que sube y no deja que el agua se vaya.</p>
-                        <p class="italic bg-white p-2 rounded border border-black">—Quinientas personas menos en doce años… y creíamos que eran solo los González. (Mamá)</p>
+                        <p class="italic bg-white p-2 rounded border border-black">«Quinientas personas menos en doce años… y creíamos que eran solo los González.» (Mamá)</p>
                     </div>
                     <button onclick="goToPassage('Vecinos2')" class="btn-comic bg-sky-400 hover:bg-sky-300 text-black px-6 py-3 rounded-xl text-base w-full">
                         Seguir ➔
