@@ -191,7 +191,9 @@
             
             <div class="w-full bg-white border-2 border-black p-4 rounded-xl space-y-3">
                 <h4 id="radio-status" class="font-black text-lg text-slate-900">Preparando radionovela...</h4>
-                <video id="radio-video" class="w-full rounded-lg border-2 border-black bg-black" controls playsinline preload="metadata">
+                <video id="radio-video" class="w-full aspect-video rounded-lg border-2 border-black bg-black object-contain" controls playsinline preload="metadata" poster="radionovela-poster.jpg" aria-label="Video de la radionovela">
+                    <source src="radionovela-compatible.webm" type='video/webm; codecs="vp8, vorbis"'>
+                    <source src="radionovela-compatible.mp4" type="video/mp4">
                     <source src="radionovela.mp4" type="video/mp4">
                     Tu navegador no puede reproducir este video.
                 </video>
